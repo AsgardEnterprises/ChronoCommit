@@ -32,7 +32,7 @@
 
 				this.getTimeDescription = function() {
 					var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-					return days[this.day] + ", " + this.hour + ":00";
+					return days[this.day] + ", " + this.hour + ":00 (Local Time)";
 				};
 
 				this.getMapData = function() {
@@ -82,7 +82,7 @@
 			};
 
 			this.colorIndex = function(country, value) {
-				return Math.floor(value / this.maxValue[country] * 100);
+				return Math.floor(value / this.maxValue[country] * 100) - 1;
 			};
 		});
 })();
