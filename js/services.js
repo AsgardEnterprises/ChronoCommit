@@ -4,12 +4,19 @@
 
 	/* Services */
 	angular.module('chronoCommit.services', [])
-		.service('timeDataService', ['$http', 'colorService',
-			function($http, colorService) {
+		.service('timeDataService', ['$http', '$q', 'colorService',
+			function($http, $q, colorService) {
 				this.day = 2;
 				this.hour = 17;
 
+				// Returns the number of hours since Sunday at 00:00.
+				this.dayHour = function() {
+					return this.hour + this.day * 24;
+				};
+
 				this.sliderScaleMax = 168;
+
+				this.data = null;
 
 				this.updateDayAndHour = function(sliderValue) {
 
@@ -32,29 +39,65 @@
 
 				this.getTimeDescription = function() {
 					var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-					return days[this.day] + ", " + this.hour + ":00 (Local Time)";
+					var display_hour = this.hour < 10 ? "0" + this.hour : this.hour;
+					return days[this.day] + ", " + display_hour + ":00 (PDT)";
+				};
+
+				// Returns a promise that fetches the commit data
+				// if it hasn't already been collected.
+				this.mapDataPromise = function() {
+					var that = this;
+
+					var defer = $q.defer();
+					if (this.data !== null) {
+						defer.resolve(this.data);
+					} else {
+						$http.get('assets/hourly_commits.json').error(function(data, status) {
+							var message = status + ': ' + data;
+							console.log(message);
+							defer.reject(message);
+						}).success(function(data) {
+							that.data = data;
+							defer.resolve(data);
+						});
+					}
+
+					return defer.promise;
 				};
 
 				this.getMapData = function() {
 					var that = this;
 
-					return $http.get('assets/hourly_commits.json').error(function(data, status) {
-						console.log(status + ': ' + data);
-					}).success(function(data) {
-						colorService.setMaxValue(data);
-					}).then(function(response) {
-						return response.data.filter(function(datum) {
-							return datum.day == that.day && datum.hour == that.hour;
+					return this.mapDataPromise()
+						.then(function(data) {
+							colorService.setMaxValue(data);
+							return data;
+						})
+						.then(function(data) {
+							return data.filter(function(datum) {
+								return datum.day == that.day && datum.hour == that.hour;
+							});
+						}).then(function(data) {
+							return data.reduce(function(memo, item) {
+								memo[item.country] = {
+									'fillKey': colorService.colorIndex(item.country, item.commits),
+									'numberOfThings': item.commits
+								};
+								return memo;
+							}, {});
 						});
-					}).then(function(data) {
-						return data.reduce(function(memo, item) {
-							memo[item.country] = {
-								'fillKey': colorService.colorIndex(item.country, item.commits),
-								'numberOfThings': item.commits
-							};
-							return memo;
-						}, {});
-					});
+				};
+
+				// Returns all the data for a particular country.
+				// Data will not be ordered!
+				// A promise is returned. Use promise.then(function(data) { ... }) to get the data.
+				this.getCountryData = function(country_code) {
+					return this.mapDataPromise()
+						.then(function(data) {
+							return data.filter(function(datum) {
+								return datum.country == country_code;
+							});
+						});
 				};
 			}
 		])
@@ -82,7 +125,46 @@
 			};
 
 			this.colorIndex = function(country, value) {
-				return Math.floor(value / this.maxValue[country] * 100) - 1;
+				var index = Math.floor(value / this.maxValue[country] * 100) - 1;
+				return index < 0 ? 0 : index;
+			};
+		})
+		.service('autoplayService', function(){
+			// Set this to false as a default.
+			var autoplayState = false;
+			var observerCallbacks = [];
+
+			// Register an observer callback
+			this.registerObserverCallback = function(callback){
+				observerCallbacks.push(callback);
+
+				// Execute the callback - if it is registered after a state change on initialisation,
+				// the callback won't have initially been called in the part of the app that is registering it.
+				// Execute it to ensure the state is up to date in that part of the application.
+				callback(autoplayState);
+			};
+
+			// Called when autoplay state updated
+			var notifyObservers = function(){
+				angular.forEach(observerCallbacks, function(callback){
+					callback(autoplayState);
+				});
+			};
+
+			this.setAutoplayState = function (state) {
+				autoplayState = state;
+				notifyObservers();
+			};
+
+			this.toggleAutoplay = function () {
+				if (autoplayState === true) {
+					autoplayState = false;
+				}
+				else {
+					autoplayState = true;
+				}
+
+				notifyObservers();
 			};
 		});
 })();

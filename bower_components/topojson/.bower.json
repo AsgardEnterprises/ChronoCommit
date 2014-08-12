@@ -26,5 +26,6 @@
   },
   "_source": "git://github.com/mbostock/topojson.git",
   "_target": "~1.6.15",
-  "_originalSource": "topojson"
+  "_originalSource": "topojson",
+  "_direct": true
 }

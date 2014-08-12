@@ -37,5 +37,6 @@
   },
   "_source": "git://github.com/markmarkoh/datamaps.git",
   "_target": "~0.3.3",
-  "_originalSource": "datamaps"
+  "_originalSource": "datamaps",
+  "_direct": true
 }

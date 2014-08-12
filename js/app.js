@@ -6,6 +6,10 @@
 		'chronoCommit.filters',
 		'chronoCommit.services',
 		'chronoCommit.directives',
-		'chronoCommit.controllers'
-	]);
+		'chronoCommit.controllers',
+		'genericJsUtilities',
+		'duScroll'
+	]).value('duScrollEasing', function(t) {
+		return t * t * t;
+	});
 })();
